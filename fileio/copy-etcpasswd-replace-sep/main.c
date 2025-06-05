@@ -18,10 +18,14 @@ int main() {
   }
 
   char destDir[1024];
-  int len = snprintf(destDir, sizeof(destDir), "%s/%s", cwd, newName);
-  if(len >= sizeof(destDir)) {
+  destDir[0] = '\0';
+  if(strlen(newName) + strlen(cwd) + 2 >= sizeof(destDir)) {
     errx(1, "Error! Pathfile is too long!");
   }
+
+  strncat(destDir, cwd, sizeof(destDir) - 1);
+  strncat(destDir, "/", sizeof(destDir) - strlen(destDir) - 1);
+  strncat(destDir, newName, sizeof(destDir) - strlen(destDir) - 1);
 
   int readfd = open(file, O_RDONLY);
   if(readfd < 0) {
