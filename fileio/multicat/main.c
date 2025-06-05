@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <err.h>
+#include <libgen.h>
 
 int copyfile(const char* src, const char* dest) {
   int srcfd = open(src, O_RDONLY);
@@ -10,10 +11,10 @@ int copyfile(const char* src, const char* dest) {
     err(1, "Cannot open %s", src);
   }
 
-  int destfd = open(src, O_WRONLY, O_CREAT, O_TRUNC, 0644);
+  int destfd = open(dest, O_WRONLY, O_CREAT, O_TRUNC, 0644);
   if(destfd < 0) {
     close(srcfd);
-    err(1, "Cannot open %s", destfd);
+    err(1, "Cannot open %s", dest);
   }
 
   char buf[4096];
@@ -28,13 +29,13 @@ int copyfile(const char* src, const char* dest) {
   }
 
   if (bytes < 0) {
-    close(src_fd);
-    close(dest_fd);
+    close(srcfd);
+    close(destfd);
     err(1, "Error reading from %s", src);
   }
     
-  close(src_fd);
-  close(dest_fd);
+  close(srcfd);
+  close(destfd);
 }
 
 int main(int argc, char* argv[]) {
@@ -48,12 +49,13 @@ int main(int argc, char* argv[]) {
     char* srcfile = argv[i];
     char* filename = basename(srcfile);
     char destpath[1024];
-    int len = snprintf(destpath, sizeof(destpath), "%s/%s", destdir, filename);
-    if(len >= sizeof(destpath)) {
-      errx(1, "Destination path too long");
+    destpath[0] = '\0';
+    if(strlen(destdir) + strlen(filename) + 2 >= sizeof(destpath)) {
+      errx(1, "Pathname too long!");
     }
-
-    write(1, "Copying %s to %s\n", srcfile, destpath);
+    strncat(destpath, destdir, sizeof(destpath) - 1);
+    strncat(destpath, "/", sizeof(destpath) - strlen(destpath) - 1);
+    strncat(destpath, filename, sizeof(destpath) - strlen(destpath) - 1);
     copyfile(srcfile, destpath);
   }
 }

@@ -5,6 +5,7 @@
 # Executables
 *.exe
 a.out
+main
 
 # Temporary files
 *~
