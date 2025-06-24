@@ -1,0 +1,102 @@
+1) Опишете понятията приспиване и събуждане на процес (block/wakeup)
+
+Процесите имат няколко основни състояния:
+- NEW - създаден, но не зареден
+- READY - готов за изпълнение, чака CPU
+- RUNNING - активно се изпълнява на CPU
+- BLOCKED/WAITING - чака събитие/ресурс
+- TERMINATED/ZOMBIE - завършил изпълнение
+
+NEW → READY → RUNNING → TERMINATED
+        ↑        ↓
+        └─ BLOCKED ←┘
+
+При block(): 
+- Процесът преминава от RUNNING -> BLOCKED
+- Context switch - ОС запазва регистрите и състоянието
+- Процесът се добавя в wait queue за конкретния ресурс
+- Дава се процесорно време на друг READY процес
+- Блокирания процес не получава процесорно време
+
+Примери за блокиране:
+- Чакане на I/O операции
+- Чакане на заключен mutex
+- Чакане на семафор (при counter = 0)
+
+При wakeup(pid):
+- Процесът преминава от BLOCKED -> READY
+- Премахва се от wait queue
+- Добавя се в ready queue
+- Scheduler-a може да го избере при следващия планиран цикъл
+- Процесът ще продължи от мястото, където е спрял
+
+Кой може да събуди процес:
+- друг процес - освобождава ресурс
+- Interrupt handler - I/O операция завършена
+- Kernel timer - timeout изтекъл (пример: sleep())
+- Signal handler - получен сигнал (примерно SIGCHLD, SIGALRM))
+
+Семафор - дефиниция и реализация
+
+Семафорът е синхронизационнен примитив, който използва counter за контролиране на достъпа до споделени ресурси. Позволява определен брой процеси едновременно да достъпват ресурс.
+
+Основни характеристики:
+- counter - int, показва брой налични ресурси
+- атомарни операции wait() и signal()
+- блокиране - ако няма ресурси, процесът блокира
+- опашка - блокираните процеси стоят в опашка
+- конструиране с init(int n) - начално "заделяне" на n ресурса
+
+Има два вида семафори:
+mutex - binary семафор с counter, който приема 0 или 1.
+counting semaphor - counter-ът е произволно число
+
+Ако използват:
+- нормална опашка - силни семафори
+- друго - слаби семафори (възможност за starvation)
+
+struct Semaphore
+  counter: int
+  blocked_queue: queue(pid)
+  lock: Spinlock
+
+sem_init(s: Semaphore, counter: int):
+  s.counter := counter
+  s.blocked_queue := {}
+  spinlock_init(s.lock)
+
+sem_wait(s: Semaphore):
+  spinlock_lock(s.lock)
+  s.counter := s.counter - 1
+  if s.counter < 0:
+    s.blocked_queue.insert(my_pid)
+    spinlock_unlock(s.lock)
+    block()
+  else:
+    spinlock.unlock(s.lock)
+
+sem_signal(s: Semaphore):
+  spinlock_lock(s.lock)
+  s.counter := s.counter + 1
+  if s.counter <= 0:
+    other_pid := s.blocked_queue.pop()
+    spinlock_unlock(s.lock)
+    wakeup(other_pid)
+  else:
+    spinlock_unlock(s.lock)
+
+2) Опишете накратко различните видове специални файлове в Linux: външни устройства, именувани в /dev, псевдофайлове в /proc, линкове - твърди и символни, команда ln, сокети
+
+block devices - устройства като твърди дискове /dev/sda и ssd /dev/nvme0n1, които четат/пишат данни на блокове
+
+character devices - устройства като терминали /dev/tty и /dev/null, които четат/пишат данни символ по символ
+
+псевдофайлове в /proc - виртуални файлове, които предоставят информация за системата в реално време, генерират се динамично от ядрото, а не се съхраняват на диск
+
+линкове:
+- hardlinks - множество имена на един файл с общ inode
+- symlinks - отделен файл, който съдържа пътя към друг файл
+
+сокети - специални файлове, използвани за комуникация между процеси на локалната машина
+
+
